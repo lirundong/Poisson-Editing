@@ -1,0 +1,14 @@
+.idea/
+.vscode/
+.DS_Store/
+
+cmake-*/
+[Bb]uild/
+
+*.o
+*.a
+*.so
+
+*.tar
+*.gz
+*.zip
