@@ -1,10 +1,9 @@
 #include <vector>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
-#include<Eigen/SparseCholesky>
+#include <Eigen/SparseCholesky>
 
 #include "poisson_clone.hpp"
-#include "utils.hpp"
 
 namespace poisson {
 
@@ -35,13 +34,14 @@ Mat seamless_clone(const Mat &back, const Mat &forge,
   // select background image on region (cfg.x1, cfg.y1) with size (obj_w, obj_h)
   Rect roi(cfg.x1, cfg.y1, obj_w, obj_h);
   Mat back_roi = ret(roi);
+  CV_Assert(back_roi.size() == obj.size());
 
   // clone obj to back_roi by Poisson filling
   triplets A_trip;
   vector<int> spatial2omega(obj_h * obj_w, -1), omega2spatial(obj_h * obj_w, -1);
   int spatial_idx{0}, omega_idx{0};
 
-  // build index mapping: plain spatial index -> index in Omega
+  // build index mapping: plain spatial index <-> index in Omega
   for (auto b = obj_mask.begin<uint8_t>(), e = obj_mask.end<uint8_t>();
        b != e; ++b, ++spatial_idx) {
     if (*b) {
@@ -70,14 +70,14 @@ Mat seamless_clone(const Mat &back, const Mat &forge,
       if (WITHIN(y, obj_h) && WITHIN(x, obj_w)) {
         n4_count++;
         j = y * obj_w + x;
+        Vec3i I_ft{obj.at<Vec3b>(y, x)};
+        b += I_f - I_ft;
         if (obj_mask.at<uint8_t>(y, x)) {  // in Omega
           CV_Assert(spatial2omega[j] >= 0);
           A_trip.emplace_back(i, spatial2omega[j], -1.);
-          Vec3i I_ft{obj.at<Vec3b>(y, x)};
-          b += I_f - I_ft;
         } else {  // on border
           Vec3i I_bt{back_roi.at<Vec3b>(y, x)};
-          b += I_f - I_bt;
+          b += I_bt;
         }
       }
     };

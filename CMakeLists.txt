@@ -8,7 +8,6 @@ find_package(OpenCV REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 set(src ${PROJECT_SOURCE_DIR}/tools/main.cpp
-        ${PROJECT_SOURCE_DIR}/src/utils.cpp
         ${PROJECT_SOURCE_DIR}/src/poisson_clone.cpp)
 
 add_executable(${PROJECT_NAME} ${src})

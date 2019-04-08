@@ -6,6 +6,7 @@
 #define POISSON_EDITING_INCLUDE_POISSON_CLONE_HPP_
 
 #include <iostream>
+#include <cstdint>
 
 #include <opencv2/opencv.hpp>
 #include <Eigen/Sparse>
