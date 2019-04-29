@@ -3,7 +3,7 @@
 > Author: Rundong Li<br/>
 > Mail: lird@shanghaitech.edu.cn
 
-![seamless_clone](data/seamless_clone.png)
+![seamless_clone](data/seamless_clone/result.png)
 
 This repository contains an effective C++ implementation of 
 [Pérez et, al. Poisson image editing](https://dl.acm.org/citation.cfm?id=882269).
@@ -33,7 +33,7 @@ function). We assume that you are using a GNU/UNIX system:
 
 Background | Object | Mask
 -----------|--------|------
-![back](data/Big_Tree_with_Red_Sky_in_the_Winter_Night.jpg) | ![plain](data/Japan.airlines.b777-300.ja733j.arp.jpg) | ![mask](data/mask.png)
+![back](data/seamless_clone/Big_Tree_with_Red_Sky_in_the_Winter_Night.jpg) | ![plain](data/seamless_clone/Japan.airlines.b777-300.ja733j.arp.jpg) | ![mask](data/seamless_clone/mask.png)
 
 Seamless cloning results: (see the title image).
 

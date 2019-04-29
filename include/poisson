@@ -1,0 +1,11 @@
+//
+// Created by lirundong on 2019-04-28.
+//
+
+#ifndef POISSON_EDITING_INCLUDE_POISSON_HPP_
+#define POISSON_EDITING_INCLUDE_POISSON_HPP_
+
+#include "poisson_clone.hpp"
+#include "poisson_matting.hpp"
+
+#endif //POISSON_EDITING_INCLUDE_POISSON_HPP_

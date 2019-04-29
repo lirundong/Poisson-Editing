@@ -1,19 +1,9 @@
-#include <vector>
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
+#include <iostream>
 #include <Eigen/SparseCholesky>
 
 #include "poisson_clone.hpp"
 
 namespace poisson {
-
-using std::vector;
-using cv::Vec3i;
-using Eigen::VectorXd;
-using triplet = Eigen::Triplet<double>;
-using triplets = vector<triplet>;
-using spMat = Eigen::SparseMatrix<double>;
-using vecMap = Eigen::Map<Eigen::VectorXd>;
 
 Mat seamless_clone(const Mat &back, const Mat &forge,
                    const Mat &mask, const CloneCfg &cfg) {
@@ -99,8 +89,8 @@ Mat seamless_clone(const Mat &back, const Mat &forge,
   spMat A(omega_idx, omega_idx);
   A.setFromTriplets(A_trip.begin(), A_trip.end());
   VectorXd bB{vecMap(b_B.data(), b_B.size())},
-           bG{vecMap(b_G.data(), b_G.size())},
-           bR{vecMap(b_R.data(), b_R.size())}, xB, xG, xR;
+      bG{vecMap(b_G.data(), b_G.size())},
+      bR{vecMap(b_R.data(), b_R.size())}, xB, xG, xR;
 
   Eigen::SimplicialLDLT<spMat> solver(A);
   CHECK_EIGEN(xB = solver.solve(bB), solver);
