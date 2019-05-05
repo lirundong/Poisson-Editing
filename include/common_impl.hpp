@@ -1,8 +1,6 @@
 #include <mutex>
 #include <limits>
 
-#include "common.hpp"
-
 namespace poisson {
 
 template<typename MaskT>

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <map>
 #include <cstdint>
 #include <cmath>
 
@@ -20,8 +21,11 @@
 #define TO_PIXEL(x) (static_cast<uint8_t>(CLAMP(x, 0., 255.)))
 #define CHECK_EIGEN(exp, solver) do { \
   exp; \
-  if (solver.info() != Eigen::Success) { \
-    std::cerr << #exp " failed" << std::endl; \
+  auto solver_info = solver.info(); \
+  if (solver_info != Eigen::Success) { \
+    auto err_info = EIGEN_COMPUTATION_ERROR.find(solver_info); \
+    std::cerr << "`" #exp "` failed," << std::endl \
+              << err_info->second << std::endl; \
   } \
 } while(0)
 
@@ -36,6 +40,7 @@ using cv::Size;
 using cv::Rect;
 using cv::Vec3b;
 using cv::Vec3i;
+using cv::Vec3d;
 using cv::Point2i;
 using cv::resize;
 using Eigen::VectorXd;
@@ -45,6 +50,14 @@ using triplets = std::vector<triplet>;
 using spMat = Eigen::SparseMatrix<double>;
 using vecMap = Eigen::Map<Eigen::VectorXd>;
 
+static const std::map<Eigen::ComputationInfo, std::string>
+    EIGEN_COMPUTATION_ERROR{
+    {Eigen::NumericalIssue, "The provided data did not satisfy the prerequisites"},
+    {Eigen::NoConvergence, "Iterative procedure did not converge"},
+    {Eigen::InvalidInput, "The inputs are invalid, or the algorithm has been "
+                          "improperly called"},
+};
+
 template<typename T>
 inline uint8_t real_to_pixel(const T value) {
   CV_Assert(0.0 <= value && value <= 1.0);
@@ -52,7 +65,7 @@ inline uint8_t real_to_pixel(const T value) {
 }
 
 template<typename PointT>
-inline typename PointT::value_type l2_dist(const PointT &p1, const PointT &p2) {
+inline decltype(auto) l2_dist(PointT &&p1, PointT &&p2) {
   auto diff = p2 - p1;
   return diff.x * diff.x + diff.y * diff.y;
 }
@@ -65,9 +78,28 @@ inline PointT find_nearest(const PointT &p, const vector<PointT> &border) {
                           });
 }
 
+inline std::tuple<int, int> idx2yx(const int idx, const int W) {
+  const int x = idx % W, y = idx / W;
+  return {y, x};
+}
+
+inline int xy2idx(const int x, const int y, const int W) {
+  return y * W + x;
+}
+
+inline int yx2idx(const int y, const int x, const int W) {
+  return y * W + x;
+}
+
+inline Vec3d operator/(const Vec3d &lhs, const Vec3d &rhs) {
+  return {lhs[0] / rhs[0], lhs[1] / rhs[1], lhs[2] / rhs[2]};
+}
+
 template<typename MaskT>
 Mat fill_nearest(const Mat &img, const Mat &mask, const MaskT fore_val);
 
 }
+
+#include "common_impl.hpp"
 
 #endif //POISSON_EDITING_INCLUDE_COMMON_HPP_

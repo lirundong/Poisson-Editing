@@ -1,21 +1,21 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(poisson)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(gflags REQUIRED)
 
 if (${EIGEN3_VERSION_MINOR} GREATER 2)  # Eigen 3.3
-  set(link_libs ${OpenCV_LIBS} Eigen3::Eigen)
+    set(link_libs ${OpenCV_LIBS} gflags Eigen3::Eigen)
 else ()
-  include_directories(${EIGEN3_INCLUDE_DIR})
-  set(link_libs ${OpenCV_LIBS})
+    include_directories(${EIGEN3_INCLUDE_DIR})
+    set(link_libs ${OpenCV_LIBS} gflags)
 endif ()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 set(lib_src
-        ${PROJECT_SOURCE_DIR}/src/common.cpp
         ${PROJECT_SOURCE_DIR}/src/poisson_clone.cpp
         ${PROJECT_SOURCE_DIR}/src/poisson_matting.cpp)
 set(src
