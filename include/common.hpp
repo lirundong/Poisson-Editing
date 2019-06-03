@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <cstdint>
 #include <cmath>
 
@@ -26,6 +27,7 @@
     auto err_info = EIGEN_COMPUTATION_ERROR.find(solver_info); \
     std::cerr << "`" #exp "` failed," << std::endl \
               << err_info->second << std::endl; \
+    exit(-1); \
   } \
 } while(0)
 
@@ -50,12 +52,13 @@ using triplets = std::vector<triplet>;
 using spMat = Eigen::SparseMatrix<double>;
 using vecMap = Eigen::Map<Eigen::VectorXd>;
 
-static const std::map<Eigen::ComputationInfo, std::string>
+static const std::unordered_map<Eigen::ComputationInfo, std::string>
     EIGEN_COMPUTATION_ERROR{
-    {Eigen::NumericalIssue, "The provided data did not satisfy the prerequisites"},
-    {Eigen::NoConvergence, "Iterative procedure did not converge"},
-    {Eigen::InvalidInput, "The inputs are invalid, or the algorithm has been "
-                          "improperly called"},
+    {Eigen::NumericalIssue, "The provided data did not satisfy the "
+                            "prerequisites"},
+    {Eigen::NoConvergence,  "Iterative procedure did not converge"},
+    {Eigen::InvalidInput,   "The inputs are invalid, or the algorithm has been "
+                            "improperly called"},
 };
 
 template<typename T>
@@ -95,11 +98,8 @@ inline Vec3d operator/(const Vec3d &lhs, const Vec3d &rhs) {
   return {lhs[0] / rhs[0], lhs[1] / rhs[1], lhs[2] / rhs[2]};
 }
 
-template<typename MaskT>
-Mat fill_nearest(const Mat &img, const Mat &mask, const MaskT fore_val);
+Mat fill_nearest(const Mat &img, const Mat &trimap, const int trimap_fore);
 
 }
-
-#include "common_impl.hpp"
 
 #endif //POISSON_EDITING_INCLUDE_COMMON_HPP_

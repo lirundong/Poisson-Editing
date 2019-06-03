@@ -1,6 +1,6 @@
-#include <mutex>
 #include <unordered_map>
 #include <Eigen/SparseCholesky>
+#include <Eigen/IterativeLinearSolvers>
 
 #include "poisson_matting.hpp"
 
@@ -15,64 +15,56 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
   CV_Assert(trimap.channels() == 1);
 
   const int H = img.rows, W = img.cols;
-  std::mutex m;
+  int omega_idx = 0, spatial_idx = 0;
   vector<int> omega2spatial;
   std::unordered_map<int, int> spatial2omega;
-  Mat alpha{cv::Mat::zeros(H, W, CV_64FC1)},
-      alpha_map{trimap.clone()},
-      f_b_diff{cv::Mat::zeros(H, W, CV_64FC3)},
-      f_b_diff_smooth;
 
-  alpha.forEach<double>([&](double &alpha_val, const int *position) -> void {
-    const Point2i p(position[1], position[0]);  // TODO: x-y order?
-    const auto trimap_val = alpha_map.at<uint8_t>(p);
-    if (cfg.fore_val == trimap_val) {
-      alpha_val = ALPHA_FORE;
-    } else if (cfg.back_val == trimap_val) {
-      alpha_val = ALPHA_BACK;
-    } else if (cfg.omega_val == trimap_val) {
-      alpha_val = ALPHA_OMEGA;
-      int spatial_idx = position[0] * W + position[1];
-      std::lock_guard<std::mutex> g(m);
+  for (auto b = trimap.begin<uint8_t>(); b != trimap.end<uint8_t>();
+       ++b, ++spatial_idx) {
+    if (*b == cfg.omega_val) {
       omega2spatial.push_back(spatial_idx);
+      spatial2omega.insert({spatial_idx, omega_idx});
+      omega_idx++;
     }
-  });
-
-  for (auto i{omega2spatial.cbegin()}; i != omega2spatial.cend(); ++i) {
-    spatial2omega.insert({*i, i - omega2spatial.cbegin()});
   }
 
-  auto fore_filled = fill_nearest(img, alpha_map, cfg.fore_val);
-  auto back_filled = fill_nearest(img, alpha_map, cfg.back_val);
-  f_b_diff += fore_filled;
-  f_b_diff -= back_filled;
+  Mat img_gray, img_fore, img_back, fb_diff;
+  cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
+
+  img_fore = fill_nearest(img_gray, trimap, cfg.fore_val);
+  img_back = fill_nearest(img_gray, trimap, cfg.back_val);
+  img_fore.convertTo(img_fore, CV_64FC1);
+  img_back.convertTo(img_back, CV_64FC1);
+  fb_diff = Mat::zeros(H, W, CV_64FC1);
+  fb_diff += img_fore;
+  fb_diff -= img_back;
   // TODO: check gaussian parameters here
-  cv::GaussianBlur(f_b_diff, f_b_diff_smooth, Size(5, 5), 1.0, 1.0);
+  cv::GaussianBlur(fb_diff, fb_diff, Size(5, 5), 1.0, 1.0);
 
   // build laplacian
-  const auto omega_size = omega2spatial.size();
+  int omega_size = omega2spatial.size();
   triplets A_trip;
-  VectorXd bB(omega_size), bG(omega_size), bR(omega_size);
+  VectorXd b(omega_size);
   A_trip.reserve(omega_size * 5);
 
   for (int i{0}; i < omega_size; ++i) {
     auto[y, x] = idx2yx(omega2spatial[i], W);
     int n4_count{0};
-    Vec3d b{0, 0, 0}, I_p{img.at<Vec3b>(y, x)};
+    double I = img_gray.at<uint8_t>(y, x), b_ = 0, diff = fb_diff.at<double>(y, x);
 
     auto add_laplacian = [&](int y, int x) {
       if (WITHIN(y, H) && WITHIN(x, W)) {
         n4_count++;
         int j = yx2idx(y, x, W);
-        Vec3d I_pn{img.at<Vec3b>(y, x)};
-        b += (I_p - I_pn) / f_b_diff_smooth.at<Vec3d>(y, x);
-        auto alpha_pn = alpha_map.at<uint8_t>(y, x);
-        if (cfg.omega_val == alpha_pn) {  // in Omega
+        double J = img_gray.at<uint8_t>(y, x);
+        b_ += (I - J) / diff;
+        auto t = trimap.at<uint8_t>(y, x);
+        if (cfg.omega_val == t) {  // in Omega
           A_trip.emplace_back(i, spatial2omega[j], -1.);
-        } else if (cfg.fore_val == alpha_pn) {  // on foreground border
-          b += Vec3d{1, 1, 1};
-        } else if (cfg.back_val == alpha_pn) {  // on background border
-          b += Vec3d{-1, -1, -1};
+        } else if (cfg.fore_val == t) {  // on foreground border
+          b_ += 1;
+        } else if (cfg.back_val == t) {  // on background border
+          b_ -= 1;
         }
       }
     };
@@ -83,32 +75,44 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
     add_laplacian(y, x - 1);
 
     A_trip.emplace_back(i, i, static_cast<double>(n4_count));
-    bB(i) = b[0];
-    bG(i) = b[1];
-    bR(i) = b[2];
+    b(i) = b_;
   }
 
   // solve Poisson by Eigen
   spMat A(omega_size, omega_size);
   A.setFromTriplets(A_trip.begin(), A_trip.end());
-  VectorXd xB, xG, xR;
+  VectorXd x_alpha;
 
   Eigen::SimplicialLDLT<spMat> solver(A);
-  CHECK_EIGEN(xB = solver.solve(bB), solver);
-  CHECK_EIGEN(xG = solver.solve(bG), solver);
-  CHECK_EIGEN(xR = solver.solve(bR), solver);
+  // Eigen::ConjugateGradient<spMat> solver(A);
+  CHECK_EIGEN(x_alpha = solver.solve(b), solver);
 
 #ifndef NDEBUG
-  std::cout << "xB sum: " << xB.sum() << std::endl;
-  std::cout << "xG sum: " << xG.sum() << std::endl;
-  std::cout << "xR sum: " << xR.sum() << std::endl;
+  std::cout << "x_alpha sum: " << x_alpha.sum() << std::endl;
+  std::cout << "x_alpha min: " << x_alpha.minCoeff() << std::endl;
+  std::cout << "x_alpha max: " << x_alpha.maxCoeff() << std::endl;
 #endif
 
+  Mat alpha = trimap.clone();
+  int f_pos = 0, n_neg = 0, nan = 0;
   for (int i{0}; i < omega_size; ++i) {
-    // TODO: fill the results to alpha
     auto[y, x] = idx2yx(omega2spatial[i], W);
-    alpha.at<double>(y, x) = xB(i);
+    double a = x_alpha(i);
+    if (std::isnan(a)) {
+      nan++;
+    } else if (0.95 <= a) {
+      f_pos++;
+    } else if (a <= 0.05) {
+      n_neg++;
+    }
+    alpha.at<uint8_t>(y, x) = static_cast<uint8_t>(CLAMP(a, 0., 1.) * 255.);
   }
+
+#ifndef NDEBUG
+  std::cout << "#postive pixels:\t" << f_pos << std::endl;
+  std::cout << "#negative pixels:\t" << n_neg << std::endl;
+  std::cout << "#nan pixels:\t" << nan << std::endl;
+#endif
 
   return alpha;
 }
