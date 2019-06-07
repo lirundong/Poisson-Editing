@@ -1,14 +1,9 @@
 #include <unordered_map>
-#include <Eigen/SparseCholesky>
-#include <Eigen/IterativeLinearSolvers>
+#include <Eigen/PardisoSupport>
 
 #include "poisson_matting.hpp"
 
 namespace poisson {
-
-const double ALPHA_FORE = 1.0;
-const double ALPHA_BACK = 0.0;
-const double ALPHA_OMEGA = -1.0;
 
 Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
   CV_Assert(img.size() == trimap.size());
@@ -64,7 +59,7 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
         } else if (cfg.fore_val == t) {  // on foreground border
           b_ += 1;
         } else if (cfg.back_val == t) {  // on background border
-          b_ -= 1;
+          // b_ -= 1;
         }
       }
     };
@@ -83,8 +78,7 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
   A.setFromTriplets(A_trip.begin(), A_trip.end());
   VectorXd x_alpha;
 
-  Eigen::SimplicialLDLT<spMat> solver(A);
-  // Eigen::ConjugateGradient<spMat> solver(A);
+  Eigen::PardisoLDLT<spMat> solver(A);
   CHECK_EIGEN(x_alpha = solver.solve(b), solver);
 
 #ifndef NDEBUG
