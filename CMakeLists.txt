@@ -23,8 +23,12 @@ endif ()
 # ---[ setup MKL
 set(MKL_ROOT ${INTEL_ROOT}/mkl)
 list(APPEND include_dirs ${MKL_ROOT}/include)
-list(APPEND link_dirs ${INTEL_ROOT}/lib ${MKL_ROOT}/lib)
 list(APPEND link_libs mkl_intel_lp64 mkl_intel_thread mkl_core iomp5 pthread m dl)
+if (APPLE)
+    list(APPEND link_dirs ${INTEL_ROOT}/lib ${MKL_ROOT}/lib)
+else ()
+    list(APPEND link_dirs ${INTEL_ROOT}/lib/intel64 ${MKL_ROOT}/lib/intel64)
+endif ()
 
 # ---[ project source files
 list(APPEND include_dirs ${PROJECT_SOURCE_DIR}/include)
