@@ -8,22 +8,24 @@ find_package(OpenCV REQUIRED)
 find_package(gflags REQUIRED)
 
 set(INTEL_ROOT /opt/intel CACHE STRING "Root path of Intel performace libraries")
-set(link_libs "")
+set(public_libs "")
+set(private_libs "")
 set(include_dirs "")
 set(link_dirs "")
 
 # ---[ setup Eigen and OpenCV
-list(APPEND link_libs ${OpenCV_LIBS})
+list(APPEND public_libs ${OpenCV_LIBS})
 if (${EIGEN3_VERSION_MINOR} GREATER 2)  # Eigen 3.3
-    list(APPEND link_libs Eigen3::Eigen)
+    list(APPEND public_libs Eigen3::Eigen)
 else ()
     list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
 endif ()
 
 # ---[ setup MKL
+# TODO: wrap into FindMKL.cmake
 set(MKL_ROOT ${INTEL_ROOT}/mkl)
 list(APPEND include_dirs ${MKL_ROOT}/include)
-list(APPEND link_libs mkl_intel_lp64 mkl_intel_thread mkl_core iomp5 pthread m dl)
+list(APPEND private_libs mkl_intel_lp64 mkl_intel_thread mkl_core iomp5 pthread m dl)
 if (APPLE)
     list(APPEND link_dirs ${INTEL_ROOT}/lib ${MKL_ROOT}/lib)
 else ()
@@ -38,14 +40,15 @@ set(lib_src
         ${PROJECT_SOURCE_DIR}/src/poisson_matting.cpp)
 
 add_library(${PROJECT_NAME} ${lib_src})
-target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_MKL_ALL)
-target_compile_options(${PROJECT_NAME} PUBLIC -m64)
 target_include_directories(${PROJECT_NAME} PUBLIC ${include_dirs})
+target_compile_definitions(${PROJECT_NAME} PRIVATE EIGEN_USE_MKL_ALL)
+target_compile_options(${PROJECT_NAME} PRIVATE -m64)
 target_link_directories(${PROJECT_NAME} PUBLIC ${link_dirs})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${link_libs})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${private_libs} PUBLIC ${public_libs})
 
 # ---[ project executables
 add_executable(visualize ${PROJECT_SOURCE_DIR}/tools/visualize.cpp)
-target_link_libraries(visualize ${PROJECT_NAME} gflags)
+target_link_libraries(visualize PRIVATE ${PROJECT_NAME} gflags)
+
 add_executable(debug_utils ${PROJECT_SOURCE_DIR}/tools/debug_utils.cpp)
-target_link_libraries(debug_utils ${PROJECT_NAME})
+target_link_libraries(debug_utils PRIVATE ${PROJECT_NAME})

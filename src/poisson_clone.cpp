@@ -1,5 +1,4 @@
 #include <iostream>
-#include <Eigen/SparseCholesky>
 
 #include "poisson_clone.hpp"
 
@@ -93,9 +92,9 @@ Mat seamless_clone(const Mat &back, const Mat &forge,
       bR{vecMap(b_R.data(), b_R.size())}, xB, xG, xR;
 
   Eigen::SimplicialLDLT<spMat> solver(A);
-  CHECK_EIGEN(xB = solver.solve(bB), solver);
-  CHECK_EIGEN(xG = solver.solve(bG), solver);
-  CHECK_EIGEN(xR = solver.solve(bR), solver);
+  EIGEN_CHECK(xB = solver.solve(bB), solver);
+  EIGEN_CHECK(xG = solver.solve(bG), solver);
+  EIGEN_CHECK(xR = solver.solve(bR), solver);
 
 #ifndef NDEBUG
   std::cout << "xB sum: " << xB.sum() << std::endl;

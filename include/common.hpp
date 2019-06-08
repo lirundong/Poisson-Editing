@@ -6,6 +6,7 @@
 #define POISSON_EDITING_INCLUDE_COMMON_HPP_
 
 #include <algorithm>
+#include <iostream>
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -16,11 +17,20 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+#include <Eigen/SparseCholesky>
+#include <Eigen/PardisoSupport>
 
 #define WITHIN(i, N) (0 <= (i) && (i) < (N))
 #define CLAMP(x, lb, ub) (max((lb), min((x), (ub))))
 #define TO_PIXEL(x) (static_cast<uint8_t>(CLAMP(x, 0., 255.)))
-#define CHECK_EIGEN(exp, solver) do { \
+
+#ifdef EIGEN_USE_MKL_ALL
+#define EIGEN_SP_SOLVER Eigen::PardisoLDLT
+#else
+#define EIGEN_SP_SOLVER Eigen::SimplicialLDLT
+#endif
+
+#define EIGEN_CHECK(exp, solver) do { \
   exp; \
   auto solver_info = solver.info(); \
   if (solver_info != Eigen::Success) { \
@@ -53,13 +63,15 @@ using spMat = Eigen::SparseMatrix<double>;
 using vecMap = Eigen::Map<Eigen::VectorXd>;
 
 static const std::unordered_map<Eigen::ComputationInfo, std::string>
-    EIGEN_COMPUTATION_ERROR{
+    EIGEN_COMPUTATION_ERROR {
     {Eigen::NumericalIssue, "The provided data did not satisfy the "
                             "prerequisites"},
     {Eigen::NoConvergence,  "Iterative procedure did not converge"},
     {Eigen::InvalidInput,   "The inputs are invalid, or the algorithm has been "
                             "improperly called"},
 };
+
+static const double EPS = 1e-6;
 
 template<typename T>
 inline uint8_t real_to_pixel(const T value) {
