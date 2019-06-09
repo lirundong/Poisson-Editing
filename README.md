@@ -3,46 +3,90 @@
 > Author: Rundong Li<br/>
 > Mail: lird@shanghaitech.edu.cn
 
-![seamless_clone](data/seamless_clone/result.png)
-
-This repository contains an effective C++ implementation of 
-[Pérez et, al. Poisson image editing](https://dl.acm.org/citation.cfm?id=882269).
-We briefly describe the guidance for reproduction, and our implementation details.
+This repository is an effective C++ implementation of 
+[Pérez et al. Poisson image editing](https://dl.acm.org/citation.cfm?id=882269)
+and [Sun et al. Poisson matting](https://dl.acm.org/citation.cfm?id=1015721).
+We briefly describe our design of reproduction and implementation details.
 
 ## Get Started
 
-This implementation is depend on [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
-and [OpenCV](https://opencv.org/), (of course we did not use the OpenCV build-in
-[`seamlessClone`](https://docs.opencv.org/master/df/da0/group__photo__clone.html#ga2bf426e4c93a6b1f21705513dfeca49d)
-function). We assume that you are using a GNU/UNIX system:
+Dependencies of this project include:
+- [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+- [OpenCV](https://opencv.org/)
+- [gflags](https://github.com/gflags/gflags)
+- [Boost](https://www.boost.org/)
+- (*optional*) [Intel MKL](https://software.intel.com/en-us/mkl) for accelerating
+  sparse system solving.
 
-1. Install dependence:
+1. Install dependence, on macOS it is recommended to using `homebrew`:
    ```bash
-   brew install eigen opencv cmake
+   brew install cmake eigen opencv gflags boost
    ```
+   
+   For intel MKL, go ahead to their [official website](https://software.intel.com/en-us/mkl)
+   to apply a community license;
 2. Setup [git-lfs](https://git-lfs.github.com/) before cloning this repository.
-   Large source / result images in this repository are hold by `git-lfs`;
-3. Compile the executable `poisson_editing`:
+   Images in this repository are quite large thus all hold by `git-lfs`;
+3. Compile the executable `visualize`:
    ```bash
-   mkdir build && cd build && cmake .. && make
-   ./poisson_editing
+   mkdir build && cd build
+   cmake -DINTEL_ROOT=<path/to/intel_performance_library> ..
+   make
+   ./visualize <args>
    ```
-   Then you should find the output image in `data/seamless_clone.png`.
+
+Arguments of `visualize` executable include:
+```
+visualize: C++ implementation of Poisson matting and clone.
+
+  Flags from /Users/lirundong/Projects/poisson_editing/tools/visualize.cpp:
+    -cfg (argument of specified task, separated by commas) type: string
+      default: ""
+    -dst (path to output image) type: string default: ""
+    -mask (path to fore/back/unknown map image) type: string default: ""
+    -src (path to source image) type: string default: ""
+    -src_back (path to source background image) type: string default: ""
+    -src_fore (path to source foreground image) type: string default: ""
+    -task (task to perform: {clone, matting}) type: string default: "clone"
+```
+where configurations (the `-cfg` argument) are passed by a string of numbers, 
+separated by commas or spaces. For each of the tasks, the configurations are:
+- For Poisson cloning: `-cfg="<object_x1>, <object_y1>, <object_long_edge_size>"`;
+- For Poisson matting: `-cfg="<trimap_value_for_foreground>, <for_background>,
+  <for_unknown_region>, <max_number_of_solving_iterations>"`;
 
 ## Visual Results
+
+### Seamless Poisson Cloning
 
 Background | Object | Mask
 -----------|--------|------
 ![back](data/seamless_clone/Big_Tree_with_Red_Sky_in_the_Winter_Night.jpg) | ![plain](data/seamless_clone/Japan.airlines.b777-300.ja733j.arp.jpg) | ![mask](data/seamless_clone/mask.png)
 
-Seamless cloning results: (see the title image).
+Result:
+![seamless_clone](data/seamless_clone/result.png)
+
+### Poisson Matting
+
+Source Image | Trimap
+-------------|--------
+![src](data/matting/src.png) | ![trimap](data/matting/trimap.png)
+
+Result after 10 iterations:
+![alpha](data/matting/result.png)
 
 ## Implementation Details
 
-The major idea of this implementation is building a (sparse) linear system based
-on (4-neighbor) Laplacian matching, then effectively solving this system by Eigen.
+The core of this implementation is building a (sparse) linear system from
+(4-neighbor) Laplacian matching, and specifying border conditions by specific
+tasks. 
 
-1. Build Laplacian of unknown values `f` within mask (the Omega in paper):
+For Poisson cloning, the border condition is *border of unknown region is
+consistent with background image*; for Poisson matting, it's *exterior border
+between unknown region and absolute foreground region have alpha value of 1, for
+background side the alpha value is 0*.
+
+1. To build Laplacian of unknown values `f` within mask (the Omega in paper):
    
    The general case here is: at position `i` of Omega, and relevant spatial 
    location `(y, x)` on source image, the Laplacian `L_f` of `f` is:
@@ -75,7 +119,7 @@ on (4-neighbor) Laplacian matching, then effectively solving this system by Eige
       ```python
       L_f[i] = 4 * f[i] - b[y + 1, x] - f[y - 1, x] - b[y, x + 1] - f[y, x - 1]
       ```
-2. Build Laplacian of guidance values `g` within mask (the Omega in paper):
+2. To build Laplacian of guidance values `g` within mask (the Omega in paper):
 
    Basically the `g` is drawn from forge-ground image, and no boundary conditions
    should be considered:
@@ -102,8 +146,8 @@ resides in Eigen API `Eigen::SimplicialLDLT::solve` and `Eigen::SparseMatrix::se
 ![seamless prof](data/profiler/seamless_clone.png)
 Thus our implementation is effective enough.
 
-## Acknowledgment
+## References
 
-I referred, but did not copy or rewrite from these tutorials during implementing:
 1. [Seamless Cloning using OpenCV (Python , C++)](https://www.learnopencv.com/seamless-cloning-using-opencv-python-cpp/)
 2. [Project: Poisson Image Editing](https://cs.brown.edu/courses/cs129/asgn/proj3_poisson/index.html)
+3. [MarcoForte/poisson-matting](https://github.com/MarcoForte/poisson-matting)

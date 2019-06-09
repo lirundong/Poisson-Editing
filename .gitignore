@@ -12,3 +12,6 @@ cmake-*/
 *.tar
 *.gz
 *.zip
+
+# debug images
+/*.png

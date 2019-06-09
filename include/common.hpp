@@ -25,9 +25,9 @@
 #define TO_PIXEL(x) (static_cast<uint8_t>(CLAMP(x, 0., 255.)))
 
 #ifdef EIGEN_USE_MKL_ALL
-#define EIGEN_SP_SOLVER Eigen::PardisoLDLT
+  #define EIGEN_SP_SOLVER Eigen::PardisoLDLT
 #else
-#define EIGEN_SP_SOLVER Eigen::SimplicialLDLT
+  #define EIGEN_SP_SOLVER Eigen::SimplicialLDLT
 #endif
 
 #define EIGEN_CHECK(exp, solver) do { \

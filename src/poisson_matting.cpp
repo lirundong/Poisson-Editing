@@ -30,10 +30,6 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
     Mat img_fore, img_back, fb_diff {Mat::zeros(H, W, CV_64FC1)};
     img_fore = fill_nearest(img_gray, trimap_step, cfg.fore_val);
     img_back = fill_nearest(img_gray, trimap_step, cfg.back_val);
-#ifndef NDEBUG
-    cv::imwrite("./img_fore.png", img_fore);
-    cv::imwrite("./img_back.png", img_back);
-#endif
     img_fore.convertTo(img_fore, CV_64FC1);
     img_back.convertTo(img_back, CV_64FC1);
     fb_diff += img_fore;
@@ -41,16 +37,6 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
 
     // TODO: check gaussian parameters here
     cv::GaussianBlur(fb_diff, fb_diff, Size(0, 0), 0.75, 0);
-#ifndef NDEBUG
-    Mat fb_diff_img;
-    fb_diff.convertTo(fb_diff_img, CV_8UC1);
-    fb_diff_img.forEach<uint8_t>([&](uint8_t &v, const int *p) -> void {
-      if (trimap_step.at<uint8_t>(p[0], p[1]) != cfg.omega_val) {
-        v = 0;
-      }
-    });
-    cv::imwrite("./fb_diff_smoothed.png", fb_diff_img);
-#endif
 
     // build laplacian
     int omega_size = omega2spatial.size();
@@ -97,12 +83,6 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
     EIGEN_SP_SOLVER<spMat> solver(A);
     EIGEN_CHECK(x_alpha = solver.solve(b), solver);
 
-#ifndef NDEBUG
-    std::cout << "x_alpha sum: " << x_alpha.sum() << std::endl;
-    std::cout << "x_alpha min: " << x_alpha.minCoeff() << std::endl;
-    std::cout << "x_alpha max: " << x_alpha.maxCoeff() << std::endl;
-#endif
-
     int f_pos = 0, n_neg = 0, outbound = 0;
     for (int i{0}; i < omega_size; ++i) {
       auto[y, x] = idx2yx(omega2spatial[i], W);
@@ -122,10 +102,16 @@ Mat global_matting(const Mat &img, const Mat &trimap, const MateCfg &cfg) {
       alpha.at<uint8_t>(y, x) = static_cast<uint8_t>(CLAMP(a, 0., 1.) * 255.);
     }
 
+#ifndef NDEBUG
     std::cout << "[Step " << step << "]:" << std::endl;
+    std::cout << "\tx_alpha min: " << x_alpha.minCoeff() << std::endl;
+    std::cout << "\tx_alpha max: " << x_alpha.maxCoeff() << std::endl;
+    std::cout << "--------------------------------" << std::endl;
     std::cout << "\t#postive:  " << f_pos << std::endl;
     std::cout << "\t#negative: " << n_neg << std::endl;
     std::cout << "\t#outbound: " << outbound << std::endl;
+    std::cout << "================================" << std::endl;
+#endif
   }
 
   return alpha;

@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(gflags REQUIRED)
+find_package(Boost REQUIRED)
 
 set(INTEL_ROOT /opt/intel CACHE STRING "Root path of Intel performace libraries")
 set(public_libs "")
@@ -48,7 +49,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${private_libs} PUBLIC ${public_li
 
 # ---[ project executables
 add_executable(visualize ${PROJECT_SOURCE_DIR}/tools/visualize.cpp)
-target_link_libraries(visualize PRIVATE ${PROJECT_NAME} gflags)
+target_link_libraries(visualize PRIVATE ${PROJECT_NAME} gflags Boost::boost)
 
 add_executable(debug_utils ${PROJECT_SOURCE_DIR}/tools/debug_utils.cpp)
 target_link_libraries(debug_utils PRIVATE ${PROJECT_NAME})
