@@ -137,14 +137,19 @@ background side the alpha value is 0*.
 
 ## Performance
 
-Our implementation is able to fuse `800 * 600` sized RoI in about 2 seconds.
-We profiled our implementation: from the perspective of `main`, major time consumptions
-reside in I/O:
+This implementation is able to fuse `800 * 600` sized RoI in about 2 seconds.
+We profiled this implementation: the major time consumptions reside in I/O:
 ![main prof](data/profiler/main.png)
-From the perspective of major fusing function `seamless_clone`, major consumptions
+From the perspective of fusing function `seamless_clone`, major consumptions
 resides in Eigen API `Eigen::SimplicialLDLT::solve` and `Eigen::SparseMatrix::setFromTriplets`:
 ![seamless prof](data/profiler/seamless_clone.png)
-Thus our implementation is effective enough.
+
+Thus (the core logic of) this implementation is effective enough. Linking against
+Intel MKL will further accelerate the solving process.
+
+## License
+
+This work is licensed under Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 ## References
 
