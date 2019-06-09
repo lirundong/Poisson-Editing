@@ -1,8 +1,5 @@
 # Poisson Image Editing
 
-> Author: Rundong Li<br/>
-> Mail: lird@shanghaitech.edu.cn
-
 This repository is an effective C++ implementation of 
 [Pérez et al. Poisson image editing](https://dl.acm.org/citation.cfm?id=882269)
 and [Sun et al. Poisson matting](https://dl.acm.org/citation.cfm?id=1015721).
